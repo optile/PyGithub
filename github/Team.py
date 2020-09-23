@@ -43,13 +43,14 @@
 ################################################################################
 
 import github.GithubObject
-import github.PaginatedList
-
-import github.Repository
 import github.NamedUser
 import github.Organization
-import github.TeamMembership
-from github import Consts
+import github.PaginatedList
+import github.Repository
+import github.TeamDiscussion
+from github.GithubException import UnknownObjectException
+
+from . import Consts
 
 
 class Team(github.GithubObject.CompletableGithubObject):
@@ -175,8 +176,7 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(member, github.NamedUser.NamedUser), member
         headers, data = self._requester.requestJsonAndCheck(
-            "PUT",
-            self.url + "/members/" + member._identity
+            "PUT", self.url + "/members/" + member._identity
         )
 
     def add_membership(self, member, role=github.GithubObject.NotSet):
@@ -187,10 +187,9 @@ class Team(github.GithubObject.CompletableGithubObject):
         :rtype: :class:`github.TeamMembership.TeamMembership`
         """
         assert isinstance(member, github.NamedUser.NamedUser), member
-        assert role is github.GithubObject.NotSet or isinstance(
-            role, (str, unicode)), role
+        assert role is github.GithubObject.NotSet or isinstance(role, str), role
         if role is not github.GithubObject.NotSet:
-            assert role in ['member', 'maintainer']
+            assert role in ["member", "maintainer"]
             put_parameters = {
                 "role": role,
             }
@@ -199,12 +198,26 @@ class Team(github.GithubObject.CompletableGithubObject):
                 "role": "member",
             }
         headers, data = self._requester.requestJsonAndCheck(
-            "PUT",
-            self.url + "/memberships/" + member._identity,
-            input=put_parameters,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            "PUT", self.url + "/memberships/" + member._identity, input=put_parameters
         )
-        return github.TeamMembership.TeamMembership(self._requester, headers, data, completed=True)
+
+    def get_team_membership(self, member):
+        """
+        :calls: `GET /orgs/:org/memberships/team/:team_id/:username <https://docs.github.com/en/rest/reference/teams#get-team-membership-for-a-user>`_
+        :param member: string or :class:`github.NamedUser.NamedUser`
+        :rtype: :class:`github.Membership.Membership`
+        """
+        assert isinstance(member, str) or isinstance(
+            member, github.NamedUser.NamedUser
+        ), member
+        if isinstance(member, github.NamedUser.NamedUser):
+            member = member._identity
+        headers, data = self._requester.requestJsonAndCheck(
+            "GET", self.url + "/memberships/" + member
+        )
+        return github.Membership.Membership(
+            self._requester, headers, data, completed=True
+        )
 
     def add_to_repos(self, repo):
         """
@@ -214,10 +227,31 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(repo, github.Repository.Repository), repo
         headers, data = self._requester.requestJsonAndCheck(
-            "PUT",
-            self.url + "/repos/" + repo._identity,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            "PUT", self.url + "/repos/" + repo._identity
         )
+
+    def get_repo_permission(self, repo):
+        """
+        :calls: `GET /teams/:id/repos/:org/:repo <http://developer.github.com/v3/orgs/teams>`_
+        :param repo: string or :class:`github.Repository.Repository`
+        :rtype: None or :class:`github.Permissions.Permissions`
+        """
+        assert isinstance(repo, github.Repository.Repository) or isinstance(
+            repo, str
+        ), repo
+        if isinstance(repo, github.Repository.Repository):
+            repo = repo._identity
+        try:
+            headers, data = self._requester.requestJsonAndCheck(
+                "GET",
+                self.url + "/repos/" + repo,
+                headers={"Accept": Consts.teamRepositoryPermissions},
+            )
+            return github.Permissions.Permissions(
+                self._requester, headers, data["permissions"], completed=True
+            )
+        except UnknownObjectException:
+            return None
 
     def set_repo_permission(self, repo, permission):
         """
@@ -231,10 +265,7 @@ class Team(github.GithubObject.CompletableGithubObject):
             "permission": permission,
         }
         headers, data = self._requester.requestJsonAndCheck(
-            "PUT",
-            self.url + "/repos/" + repo._identity,
-            input=put_parameters,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            "PUT", self.url + "/repos/" + repo._identity, input=put_parameters
         )
 
     def delete(self):
@@ -249,20 +280,36 @@ class Team(github.GithubObject.CompletableGithubObject):
         )
         return status == 204
 
-    def edit(self, name, description=github.GithubObject.NotSet, permission=github.GithubObject.NotSet, privacy=github.GithubObject.NotSet, parent_team_id=github.GithubObject.NotSet):
+    def edit(
+        self,
+        name,
+        description=github.GithubObject.NotSet,
+        permission=github.GithubObject.NotSet,
+        privacy=github.GithubObject.NotSet,
+        parent_team_id=github.GithubObject.NotSet
+    ):
         """
         :calls: `PATCH /teams/:id <http://developer.github.com/v3/orgs/teams>`_
         :param name: string
         :param description: string
         :param permission: string
         :param privacy: string
+        :param parent_team_id: string
         :rtype: None
         """
-        assert isinstance(name, (str, unicode)), name
-        assert description is github.GithubObject.NotSet or isinstance(description, (str, unicode)), description
-        assert permission is github.GithubObject.NotSet or isinstance(permission, (str, unicode)), permission
-        assert privacy is github.GithubObject.NotSet or isinstance(privacy, (str, unicode)), privacy
-        assert parent_team_id is github.GithubObject.NotSet or isinstance(parent_team_id, int), parent_team_id
+        assert isinstance(name, str), name
+        assert description is github.GithubObject.NotSet or isinstance(
+            description, str
+        ), description
+        assert permission is github.GithubObject.NotSet or isinstance(
+            permission, str
+        ), permission
+        assert privacy is github.GithubObject.NotSet or isinstance(
+            privacy, str
+        ), privacy
+        assert parent_team_id is github.GithubObject.NotSet or isinstance(
+            parent_team_id, int
+        ), parent_team_id
         post_parameters = {
             "name": name,
         }
@@ -275,12 +322,34 @@ class Team(github.GithubObject.CompletableGithubObject):
         if parent_team_id is not github.GithubObject.NotSet:
             post_parameters["parent_team_id"] = parent_team_id
         headers, data = self._requester.requestJsonAndCheck(
-            "PATCH",
-            self.url,
-            input=post_parameters,
-            headers={'Accept': Consts.mediaTypeNestedTeamsPreview},
+            "PATCH", self.url, input=post_parameters
         )
         self._useAttributes(data)
+
+    def get_teams(self):
+        """
+        :calls: `GET /teams/:id/teams <https://developer.github.com/v3/teams/#list-child-teams>`_
+        :rtype: :class:`github.PaginatedList.PaginatedList` of :class:`github.Team.Team`
+        """
+        return github.PaginatedList.PaginatedList(
+            github.Team.Team,
+            self._requester,
+            self.url + "/teams",
+            None,
+        )
+
+    def get_discussions(self):
+        """
+        :calls: `GET /teams/:id/discussions <https://developer.github.com/v3/teams/discussions/#list-discussions>`_
+        :rtype: :class:`github.PaginatedList.PaginatedList` of :class:`github.TeamDiscussion.TeamDiscussion`
+        """
+        return github.PaginatedList.PaginatedList(
+            github.TeamDiscussion.TeamDiscussion,
+            self._requester,
+            self.url + "/discussions",
+            None,
+            headers={"Accept": Consts.mediaTypeTeamDiscussionsPreview},
+        )
 
     def get_members(self, role=github.GithubObject.NotSet):
         """
@@ -288,17 +357,16 @@ class Team(github.GithubObject.CompletableGithubObject):
         :param role: string
         :rtype: :class:`github.PaginatedList.PaginatedList` of :class:`github.NamedUser.NamedUser`
         """
-        assert role is github.GithubObject.NotSet or isinstance(role, (str, unicode)), role
+        assert role is github.GithubObject.NotSet or isinstance(role, str), role
         url_parameters = dict()
         if role is not github.GithubObject.NotSet:
-            assert role in ['member', 'maintainer', 'all']
+            assert role in ["member", "maintainer", "all"]
             url_parameters["role"] = role
         return github.PaginatedList.PaginatedList(
             github.NamedUser.NamedUser,
             self._requester,
             self.url + "/members",
             url_parameters,
-            {"Accept": Consts.mediaTypeNestedTeamsPreview},
         )
 
     def get_membership(self, user):
@@ -321,11 +389,20 @@ class Team(github.GithubObject.CompletableGithubObject):
         :rtype: :class:`github.PaginatedList.PaginatedList` of :class:`github.Repository.Repository`
         """
         return github.PaginatedList.PaginatedList(
-            github.Repository.Repository,
+            github.Repository.Repository, self._requester, self.url + "/repos", None
+        )
+
+    def invitations(self):
+        """
+        :calls: `GET /teams/:id/invitations <https://developer.github.com/v3/teams/members>`_
+        :rtype: :class:`github.PaginatedList.PaginatedList` of :class:`github.NamedUser.NamedUser`
+        """
+        return github.PaginatedList.PaginatedList(
+            github.NamedUser.NamedUser,
             self._requester,
-            self.url + "/repos",
+            self.url + "/invitations",
             None,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            headers={"Accept": Consts.mediaTypeOrganizationInvitationPreview},
         )
 
     def get_subteams(self):
@@ -338,7 +415,6 @@ class Team(github.GithubObject.CompletableGithubObject):
             self._requester,
             self.url + "/teams",
             None,
-            {"Accept": Consts.mediaTypeNestedTeamsPreview},
         )
 
     def has_in_members(self, member):
@@ -349,9 +425,9 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(member, github.NamedUser.NamedUser), member
         status, headers, data = self._requester.requestJson(
-            "GET",
-            self.url + "/members/" + member._identity
+            "GET", self.url + "/members/" + member._identity
         )
+        self._requester.raiseOnStatus(status, headers, data)
         return status == 204
 
     def has_in_repos(self, repo):
@@ -362,10 +438,9 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(repo, github.Repository.Repository), repo
         status, headers, data = self._requester.requestJson(
-            "GET",
-            self.url + "/repos/" + repo._identity,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            "GET", self.url + "/repos/" + repo._identity
         )
+        self._requester.raiseOnStatus(status, headers, data)
         return status == 204
 
     def remove_membership(self, member):
@@ -379,8 +454,8 @@ class Team(github.GithubObject.CompletableGithubObject):
         status, headers, data = self._requester.requestJson(
             "DELETE",
             self.url + "/memberships/" + member._identity,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
         )
+        self._requester.raiseOnStatus(status, headers, data)
         return status == 204
 
     def remove_from_members(self, member):
@@ -394,8 +469,7 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(member, github.NamedUser.NamedUser), member
         headers, data = self._requester.requestJsonAndCheck(
-            "DELETE",
-            self.url + "/members/" + member._identity
+            "DELETE", self.url + "/members/" + member._identity
         )
 
     def remove_from_repos(self, repo):
@@ -406,9 +480,7 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         assert isinstance(repo, github.Repository.Repository), repo
         headers, data = self._requester.requestJsonAndCheck(
-            "DELETE",
-            self.url + "/repos/" + repo._identity,
-            headers={"Accept": Consts.mediaTypeNestedTeamsPreview},
+            "DELETE", self.url + "/repos/" + repo._identity
         )
 
     @property
@@ -446,14 +518,20 @@ class Team(github.GithubObject.CompletableGithubObject):
         if "repos_count" in attributes:  # pragma no branch
             self._repos_count = self._makeIntAttribute(attributes["repos_count"])
         if "repositories_url" in attributes:  # pragma no branch
-            self._repositories_url = self._makeStringAttribute(attributes["repositories_url"])
+            self._repositories_url = self._makeStringAttribute(
+                attributes["repositories_url"]
+            )
         if "slug" in attributes:  # pragma no branch
             self._slug = self._makeStringAttribute(attributes["slug"])
         if "url" in attributes:  # pragma no branch
             self._url = self._makeStringAttribute(attributes["url"])
         if "organization" in attributes:  # pragma no branch
-            self._organization = self._makeClassAttribute(github.Organization.Organization, attributes["organization"])
+            self._organization = self._makeClassAttribute(
+                github.Organization.Organization, attributes["organization"]
+            )
         if "privacy" in attributes:  # pragma no branch
             self._privacy = self._makeStringAttribute(attributes["privacy"])
         if "parent" in attributes:  # pragma no branch
-            self._parent = self._makeClassAttribute(github.Team.Team, attributes["parent"])
+            self._parent = self._makeClassAttribute(
+                github.Team.Team, attributes["parent"]
+            )

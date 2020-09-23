@@ -30,9 +30,8 @@
 ################################################################################
 
 import github.GithubObject
-
-import github.Repository
 import github.NotificationSubject
+import github.Repository
 
 
 class Notification(github.GithubObject.CompletableGithubObject):
@@ -124,6 +123,22 @@ class Notification(github.GithubObject.CompletableGithubObject):
             self.url,
         )
 
+    def get_pull_request(self):
+        """
+        :type: :class:github.PullRequest.PullRequest
+        """
+        headers, data = self._requester.requestJsonAndCheck("GET", self.subject.url)
+        return github.PullRequest.PullRequest(
+            self._requester, headers, data, completed=True
+        )
+
+    def get_issue(self):
+        """
+        :type: :class:github.Issue.Issue
+        """
+        headers, data = self._requester.requestJsonAndCheck("GET", self.subject.url)
+        return github.Issue.Issue(self._requester, headers, data, completed=True)
+
     def _initAttributes(self):
         self._id = github.GithubObject.NotSet
         self._last_read_at = github.GithubObject.NotSet
@@ -140,13 +155,19 @@ class Notification(github.GithubObject.CompletableGithubObject):
         if "last_read_at" in attributes:  # pragma no branch
             self._last_read_at = self._makeDatetimeAttribute(attributes["last_read_at"])
         if "repository" in attributes:  # pragma no branch
-            self._repository = self._makeClassAttribute(github.Repository.Repository, attributes["repository"])
+            self._repository = self._makeClassAttribute(
+                github.Repository.Repository, attributes["repository"]
+            )
         if "subject" in attributes:  # pragma no branch
-            self._subject = self._makeClassAttribute(github.NotificationSubject.NotificationSubject, attributes["subject"])
+            self._subject = self._makeClassAttribute(
+                github.NotificationSubject.NotificationSubject, attributes["subject"]
+            )
         if "reason" in attributes:  # pragma no branch
             self._reason = self._makeStringAttribute(attributes["reason"])
         if "subscription_url" in attributes:  # pragma no branch
-            self._subscription_url = self._makeStringAttribute(attributes["subscription_url"])
+            self._subscription_url = self._makeStringAttribute(
+                attributes["subscription_url"]
+            )
         if "unread" in attributes:  # pragma no branch
             self._unread = self._makeBoolAttribute(attributes["unread"])
         if "updated_at" in attributes:  # pragma no branch
