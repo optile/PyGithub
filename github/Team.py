@@ -184,7 +184,7 @@ class Team(github.GithubObject.CompletableGithubObject):
         :calls: `PUT /teams/:id/memberships/:user <http://developer.github.com/v3/orgs/teams>`_
         :param member: :class:`github.Nameduser.NamedUser`
         :param role: string
-        :rtype: :class:`github.TeamMembership.TeamMembership`
+        :rtype: :class:`github.Membership.Membership`
         """
         assert isinstance(member, github.NamedUser.NamedUser), member
         assert role is github.GithubObject.NotSet or isinstance(role, str), role
@@ -199,6 +199,9 @@ class Team(github.GithubObject.CompletableGithubObject):
             }
         headers, data = self._requester.requestJsonAndCheck(
             "PUT", self.url + "/memberships/" + member._identity, input=put_parameters
+        )
+        return github.Membership.Membership(
+            self._requester, headers, data, completed=True
         )
 
     def get_team_membership(self, member):
