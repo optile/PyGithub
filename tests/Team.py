@@ -34,15 +34,10 @@
 #                                                                              #
 ################################################################################
 
-<<<<<<< HEAD:github/tests/Team.py
-import Framework
-from github.GithubObject import NotSet
-=======
 
 from datetime import datetime
 
 from . import Framework
->>>>>>> upstream/master:tests/Team.py
 
 
 class Team(Framework.TestCase):
@@ -149,17 +144,14 @@ class Team(Framework.TestCase):
         self.assertEqual(self.team.name, "Name edited by PyGithub")
 
     def testEditWithAllArguments(self):
-<<<<<<< HEAD:github/tests/Team.py
         parent = self.org.create_team("Parent Team for Nesting")
-        self.team.edit("Name edited twice by PyGithub", "Description edited by PyGithub", "admin", "secret", parent.id)
-=======
         self.team.edit(
             "Name edited twice by PyGithub",
             "Description edited by PyGithub",
             "admin",
             "secret",
+            parent.id
         )
->>>>>>> upstream/master:tests/Team.py
         self.assertEqual(self.team.name, "Name edited twice by PyGithub")
         self.assertEqual(self.team.description, "Description edited by PyGithub")
         self.assertEqual(self.team.permission, "admin")

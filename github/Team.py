@@ -373,7 +373,7 @@ class Team(github.GithubObject.CompletableGithubObject):
         """
         :calls: `GET /teams/:team_id/memberships/:username <https://developer.github.com/v3/teams/members/#get-team-membership>`_
         :param user: :class:`github.NamedUser.NamedUser`
-        :rtype: :class:`github.TeamMembership.TeamMembership`
+        :rtype: :class:`github.Membership.Membership`
         """
         assert isinstance(user, github.NamedUser.NamedUser), user
         headers, data = self._requester.requestJsonAndCheck(
@@ -381,7 +381,7 @@ class Team(github.GithubObject.CompletableGithubObject):
             "/teams/" + str(self._id.value) + "/memberships/" + user.name,
             headers={'Accept': Consts.mediaTypeNestedTeamsPreview},
             )
-        return github.TeamMembership.TeamMembership(self._requester, headers, data, completed=True)
+        return github.Membership.Membership(self._requester, headers, data, completed=True)
 
     def get_repos(self):
         """
